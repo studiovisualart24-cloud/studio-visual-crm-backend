@@ -12,6 +12,9 @@ async function chamarClaude(mensagens, sistema, maxTokens) {
       'x-api-key': process.env.ANTHROPIC_API_KEY,
       'anthropic-version': '2023-06-01',
       'Content-Type': 'application/json',
+      // Só é necessário se a chave de API for do tipo "vinculada à identidade" (organizações
+      // com SSO/federação de identidade configurada). Chaves comuns ignoram este cabeçalho.
+      ...(process.env.ANTHROPIC_WORKSPACE_ID && { 'anthropic-workspace-id': process.env.ANTHROPIC_WORKSPACE_ID }),
     },
     body: JSON.stringify({
       model: CLAUDE_MODEL,
