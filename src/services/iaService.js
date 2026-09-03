@@ -9,7 +9,7 @@ async function chamarClaude(mensagens, sistema, maxTokens) {
   const resp = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
     headers: {
-      'x-api-key': process.env.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,
+      'x-api-key': process.env.ANTHROPIC_API_KEY,
       'anthropic-version': '2023-06-01',
       'Content-Type': 'application/json',
     },
@@ -30,7 +30,7 @@ async function chamarClaude(mensagens, sistema, maxTokens) {
 }
 
 async function gerarTexto({ prompt, sistema, maxTokens }) {
-  if (!process.env.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) {
+  if (!process.env.ANTHROPIC_API_KEY) {
     return { ok: false, aviso: 'ANTHROPIC_API_KEY não configurada. Crie uma chave em console.anthropic.com/settings/keys e adicione nas variáveis de ambiente.' };
   }
   try {
@@ -43,7 +43,7 @@ async function gerarTexto({ prompt, sistema, maxTokens }) {
 }
 
 async function conversar({ mensagens, sistema, maxTokens }) {
-  if (!process.env.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) {
+  if (!process.env.ANTHROPIC_API_KEY) {
     return { ok: false, aviso: 'ANTHROPIC_API_KEY não configurada. Crie uma chave em console.anthropic.com/settings/keys e adicione nas variáveis de ambiente.' };
   }
   try {
