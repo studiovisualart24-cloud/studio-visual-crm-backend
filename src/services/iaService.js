@@ -9,7 +9,7 @@ async function chamarClaude(mensagens, sistema, maxTokens) {
   const resp = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
     headers: {
-      'x-api-key': process.env.ANTHROPIC_API_KEY,
+      'x-api-key': process.env.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,
       'anthropic-version': '2023-06-01',
       'Content-Type': 'application/json',
     },
