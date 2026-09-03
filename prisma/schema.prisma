@@ -1,0 +1,119 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model IntegrationToken {
+  id            String   @id @default(cuid())
+  accountId     String
+  provider      String
+  accessToken   String
+  refreshToken  String?
+  expiresAt     DateTime?
+  scope         String?
+  raw           Json?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@unique([accountId, provider])
+}
+
+model WebhookEvent {
+  id          String   @id @default(cuid())
+  provider    String
+  eventType   String?
+  payload     Json
+  processed   Boolean  @default(false)
+  error       String?
+  receivedAt  DateTime @default(now())
+}
+
+// Um fluxo de automação (o que aparece na aba "Automação" do CRM).
+// steps guarda o array de passos exatamente como o front-end monta:
+// [{id, tipo, ...campos do passo}], na ordem de execução.
+model Automacao {
+  id        String   @id @default(cuid())
+  accountId String
+  nome      String
+  gatilho   String
+  ativo     Boolean  @default(true)
+  steps     Json
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([accountId, gatilho, ativo])
+}
+
+// Uma execução de um fluxo para um lead específico (ou um teste manual sem lead).
+// status: "rodando" | "aguardando" (parado num passo "esperar") | "concluido" | "parado" (condição falhou) | "erro"
+// waitUntil é preenchido quando status = "aguardando"; o agendador do server.js
+// varre por status="aguardando" e waitUntil <= agora para retomar sozinho.
+model AutomationRun {
+  id               String    @id @default(cuid())
+  flowId           String
+  flowNome         String?
+  accountId        String
+  contatoId        String?
+  contatoNome      String?
+  gatilho          String?
+  status           String    @default("rodando")
+  currentStepIndex Int       @default(0)
+  waitUntil        DateTime?
+  log              Json?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  @@index([status, waitUntil])
+  @@index([accountId, flowId])
+}
+
+model Contato {
+  id            String   @id @default(cuid())
+  accountId     String
+  nome          String
+  empresa       String?
+  telefone      String?
+  whatsapp      String?
+  email         String?
+  tipo          String   @default("PJ")
+  segmento      String?
+  origem        String?
+  status        String   @default("Lead")
+  stage         String   @default("Lead")
+  cidade        String?
+  estado        String?
+  valorContrato Float    @default(0)
+  valorMensal   Float    @default(0)
+  notas         String?
+  tags          String[] @default([])
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+model Tarefa {
+  id           String   @id @default(cuid())
+  accountId    String
+  titulo       String
+  data         DateTime?
+  feita        Boolean  @default(false)
+  responsavel  String?
+  createdAt    DateTime @default(now())
+}
+
+model Pagamento {
+  id            String   @id @default(cuid())
+  provider      String
+  clienteEmail  String?
+  clienteNome   String?
+  valor         Float
+  moeda         String   @default("BRL")
+  status        String
+  referenciaId  String
+  createdAt     DateTime @default(now())
+
+  @@unique([provider, referenciaId])
+}
