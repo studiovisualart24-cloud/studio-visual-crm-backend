@@ -18,6 +18,11 @@ const { retomarAutomacoesPendentes } = require('./services/automationEngine');
 app.use((req, res, next) => {
   res.header('Access-Control-Allow-Origin', '*');
   res.header('Access-Control-Allow-Headers', 'Content-Type');
+  // Faltava autorizar os métodos PUT/DELETE aqui — sem isso o navegador bloqueia (CORS)
+  // qualquer requisição PUT (ex: salvar edições de automação) ou DELETE antes mesmo de
+  // ela ser enviada de verdade, mesmo o servidor tratando '*' como origem liberada.
+  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+  if (req.method === 'OPTIONS') return res.sendStatus(204);
   next();
 });
 
