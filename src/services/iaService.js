@@ -1,37 +1,40 @@
-// Chama a API do Google Gemini. Separado da rota HTTP para poder ser usado tanto por
-// /api/ia/gerar e /api/ia/conversar quanto pelo motor de automação (passo "Disparar IA").
+// Chama a API da Anthropic (Claude) usando uma chave de API paga (sem plano grátis, mas
+// custo por mensagem costuma ser baixo). Isso existe porque chamadas diretas do navegador
+// para IA só funcionam dentro do ambiente de artefatos do Claude.ai — fora dali (como no CRM
+// publicado no Netlify), é preciso passar pelo backend com uma API key de verdade.
 
-const GEMINI_MODEL = 'gemini-2.0-flash';
+const CLAUDE_MODEL = 'claude-sonnet-5';
 
-async function chamarGemini(mensagens, sistema, maxTokens) {
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${process.env.GEMINI_API_KEY}`;
-
-  const body = {
-    contents: mensagens.map((m) => ({
-      role: m.role === 'assistant' ? 'model' : 'user',
-      parts: [{ text: m.content }],
-    })),
-    ...(sistema && { systemInstruction: { parts: [{ text: sistema }] } }),
-    generationConfig: { maxOutputTokens: maxTokens || 800 },
-  };
-
-  const resp = await fetch(url, {
+async function chamarClaude(mensagens, sistema, maxTokens) {
+  const resp = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body),
+    headers: {
+      'x-api-key': process.env.ANTHROPIC_API_KEY,
+      'anthropic-version': '2023-06-01',
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      model: CLAUDE_MODEL,
+      max_tokens: maxTokens || 800,
+      ...(sistema && { system: sistema }),
+      messages: mensagens.map((m) => ({
+        role: m.role === 'assistant' ? 'assistant' : 'user',
+        content: m.content,
+      })),
+    }),
   });
   const data = await resp.json();
   if (!resp.ok) throw new Error(JSON.stringify(data));
 
-  return (data.candidates?.[0]?.content?.parts || []).map((p) => p.text || '').join('\n').trim();
+  return (data.content || []).map((bloco) => bloco.text || '').join('\n').trim();
 }
 
 async function gerarTexto({ prompt, sistema, maxTokens }) {
-  if (!process.env.GEMINI_API_KEY) {
-    return { ok: false, aviso: 'GEMINI_API_KEY não configurada. Crie uma chave grátis em aistudio.google.com/apikey e adicione nas variáveis de ambiente.' };
+  if (!process.env.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) {
+    return { ok: false, aviso: 'ANTHROPIC_API_KEY não configurada. Crie uma chave em console.anthropic.com/settings/keys e adicione nas variáveis de ambiente.' };
   }
   try {
-    const texto = await chamarGemini([{ role: 'user', content: prompt }], sistema, maxTokens);
+    const texto = await chamarClaude([{ role: 'user', content: prompt }], sistema, maxTokens);
     return { ok: true, texto };
   } catch (err) {
     console.error('Erro ao chamar a IA:', err);
@@ -40,11 +43,11 @@ async function gerarTexto({ prompt, sistema, maxTokens }) {
 }
 
 async function conversar({ mensagens, sistema, maxTokens }) {
-  if (!process.env.GEMINI_API_KEY) {
-    return { ok: false, aviso: 'GEMINI_API_KEY não configurada. Crie uma chave grátis em aistudio.google.com/apikey e adicione nas variáveis de ambiente.' };
+  if (!process.env.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) {
+    return { ok: false, aviso: 'ANTHROPIC_API_KEY não configurada. Crie uma chave em console.anthropic.com/settings/keys e adicione nas variáveis de ambiente.' };
   }
   try {
-    const texto = await chamarGemini(mensagens, sistema, maxTokens);
+    const texto = await chamarClaude(mensagens, sistema, maxTokens);
     return { ok: true, texto };
   } catch (err) {
     console.error('Erro ao chamar a IA:', err);
