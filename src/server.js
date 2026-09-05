@@ -11,6 +11,7 @@ const whatsappRoutes = require('./routes/whatsapp');
 const driveRoutes = require('./routes/drive');
 const iaRoutes = require('./routes/ia');
 const linkedinRoutes = require('./routes/linkedin');
+const metaRoutes = require('./routes/meta');
 const automacoesRoutes = require('./routes/automacoes');
 const leadsRoutes = require('./routes/leads');
 const { retomarAutomacoesPendentes } = require('./services/automationEngine');
