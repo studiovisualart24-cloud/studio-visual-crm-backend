@@ -32,4 +32,35 @@ async function publicarNoInstagram(accountId, { imageUrl, caption, igUserId }) {
   return publish; // { id: "..." } do post publicado
 }
 
- module.exports = { publicarNoInstagram, refreshMetaToken };
+// Publica uma foto de verdade na Página do Facebook. Diferente do Instagram, aqui não existe um
+// "ID fixo" salvo na conexão — a gente descobre a Página certa toda vez consultando as Páginas
+// que a conta autorizou (/me/accounts), porque cada Página tem seu próprio "token de Página"
+// (diferente do token do usuário) que é quem realmente tem permissão pra publicar nela.
+async function publicarNoFacebook(accountId, { imageUrl, caption, nomePagina }) {
+  const accessToken = await tokenService.getValidAccessToken(accountId, 'meta', refreshMetaToken);
+
+  const paginasRes = await fetch(
+    `https://graph.facebook.com/v19.0/me/accounts?fields=name,access_token&access_token=${accessToken}`
+  );
+  const paginasData = await paginasRes.json();
+  if (!paginasRes.ok) throw new Error('Erro ao consultar Páginas do Facebook: ' + JSON.stringify(paginasData));
+
+  const paginas = paginasData.data || [];
+  if (paginas.length === 0) throw new Error('Nenhuma Página do Facebook encontrada nessa conexão. Confira a conexão do Meta em Integrações.');
+
+  // Se um nome específico foi passado, procura por ele; senão usa a primeira Página encontrada.
+  const pagina = nomePagina
+    ? paginas.find((p) => p.name.toLowerCase().includes(nomePagina.toLowerCase())) || paginas[0]
+    : paginas[0];
+
+  const publish = await fetch(
+    `https://graph.facebook.com/v19.0/${pagina.id}/photos?url=${encodeURIComponent(imageUrl)}&caption=${encodeURIComponent(caption || '')}&access_token=${pagina.access_token}`,
+    { method: 'POST' }
+  ).then((r) => r.json());
+
+  if (!publish.id && !publish.post_id) throw new Error('Falha ao publicar: ' + JSON.stringify(publish));
+
+  return { id: publish.post_id || publish.id, paginaNome: pagina.name };
+}
+
+module.exports = { publicarNoInstagram, publicarNoFacebook, refreshMetaToken };
