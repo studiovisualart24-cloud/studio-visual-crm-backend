@@ -32,4 +32,4 @@ async function publicarNoInstagram(accountId, { imageUrl, caption, igUserId }) {
   return publish; // { id: "..." } do post publicado
 }
 
- = { publicarNoInstagram, refreshMetaToken };
+ module.exports = { publicarNoInstagram, refreshMetaToken };
