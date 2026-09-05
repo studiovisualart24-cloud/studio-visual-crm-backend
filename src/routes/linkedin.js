@@ -1,11 +1,51 @@
-// Publica posts de texto no LinkedIn usando o token já conectado (via /oauth/linkedin/connect).
+// Publica posts (com ou sem imagem) no LinkedIn usando o token já conectado (via /oauth/linkedin/connect).
 
 const express = require('express');
 const router = express.Router();
 const tokenService = require('../services/tokenService');
 
+// Registra o upload de uma imagem no LinkedIn, baixa a imagem da URL informada (ex: link do
+// Google Drive) e envia os bytes pro LinkedIn. Retorna o "asset" (urn) pra usar no post.
+async function enviarImagemParaLinkedIn(accessToken, author, imageUrl) {
+  const registerRes = await fetch('https://api.linkedin.com/v2/assets?action=registerUpload', {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      'Content-Type': 'application/json',
+      'X-Restli-Protocol-Version': '2.0.0',
+    },
+    body: JSON.stringify({
+      registerUploadRequest: {
+        recipes: ['urn:li:digitalmediaRecipe:feedshare-image'],
+        owner: author,
+        serviceRelationships: [
+          { relationshipType: 'OWNER', identifier: 'urn:li:userGeneratedContent' },
+        ],
+      },
+    }),
+  });
+  const registerData = await registerRes.json();
+  if (!registerRes.ok) throw new Error('Falha ao registrar upload de imagem no LinkedIn: ' + JSON.stringify(registerData));
+
+  const uploadUrl = registerData.value.uploadMechanism['com.linkedin.digitalmedia.uploading.MediaUploadHttpRequest'].uploadUrl;
+  const asset = registerData.value.asset;
+
+  const imagemRes = await fetch(imageUrl);
+  if (!imagemRes.ok) throw new Error('Não foi possível baixar a imagem da URL informada.');
+  const imagemBuffer = Buffer.from(await imagemRes.arrayBuffer());
+
+  const uploadRes = await fetch(uploadUrl, {
+    method: 'PUT',
+    headers: { Authorization: `Bearer ${accessToken}` },
+    body: imagemBuffer,
+  });
+  if (!uploadRes.ok) throw new Error('Falha ao enviar os bytes da imagem pro LinkedIn.');
+
+  return asset;
+}
+
 router.post('/linkedin/publicar', async (req, res) => {
-  const { accountId, texto, organizationId } = req.body;
+  const { accountId, texto, organizationId, imageUrl } = req.body;
   if (!accountId || !texto) return res.status(400).json({ error: 'accountId e texto são obrigatórios' });
 
   try {
@@ -25,6 +65,20 @@ router.post('/linkedin/publicar', async (req, res) => {
       author = `urn:li:person:${perfil.sub}`;
     }
 
+    let shareContent = {
+      shareCommentary: { text: texto },
+      shareMediaCategory: 'NONE',
+    };
+
+    if (imageUrl) {
+      const asset = await enviarImagemParaLinkedIn(accessToken, author, imageUrl);
+      shareContent = {
+        shareCommentary: { text: texto },
+        shareMediaCategory: 'IMAGE',
+        media: [{ status: 'READY', media: asset }],
+      };
+    }
+
     const postRes = await fetch('https://api.linkedin.com/v2/ugcPosts', {
       method: 'POST',
       headers: {
@@ -36,10 +90,7 @@ router.post('/linkedin/publicar', async (req, res) => {
         author,
         lifecycleState: 'PUBLISHED',
         specificContent: {
-          'com.linkedin.ugc.ShareContent': {
-            shareCommentary: { text: texto },
-            shareMediaCategory: 'NONE',
-          },
+          'com.linkedin.ugc.ShareContent': shareContent,
         },
         visibility: { 'com.linkedin.ugc.MemberNetworkVisibility': 'PUBLIC' },
       }),
@@ -51,7 +102,7 @@ router.post('/linkedin/publicar', async (req, res) => {
     res.json({ publicado: true, id: postRes.headers.get('x-restli-id') || data.id });
   } catch (err) {
     console.error('Erro ao publicar no LinkedIn:', err);
-    res.status(500).json({ publicado: false, error: String(err) });
+    res.status(500).json({ publicado: false, error: String(err.message || err) });
   }
 });
 
