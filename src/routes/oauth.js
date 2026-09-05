@@ -8,8 +8,7 @@ const PROVIDERS = {
     tokenUrl: 'https://graph.facebook.com/v19.0/oauth/access_token',
     clientId: process.env.META_CLIENT_ID,
     clientSecret: process.env.META_CLIENT_SECRET,
-    scope: 'instagram_business_basic,instagram_business_manage_comments,instagram_business_manage_messages,instagram_content_publish,pages_show_list,ads_management,ads_read',
-  },
+    scope: 'instagram_content_publish,pages_show_list,ads_management,ads_read',  },
   google: {
     authUrl: 'https://accounts.google.com/o/oauth2/v2/auth',
     tokenUrl: 'https://oauth2.googleapis.com/token',
