@@ -91,8 +91,7 @@ router.get('/:provider/callback', async (req, res) => {
       raw: data,
     });
 
-    res.redirect(`${process.env.FRONTEND_URL}/integracoes?connected=${req.params.provider}`);
-  } catch (err) {
+    res.redirect(`${process.env.FRONTEND_URL}/?connected=${req.params.provider}`);  } catch (err) {
     console.error('Erro no OAuth callback:', err);
     res.status(500).send('Erro ao concluir a conexão. Veja os logs do servidor.');
   }
