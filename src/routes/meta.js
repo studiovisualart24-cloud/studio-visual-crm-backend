@@ -5,7 +5,7 @@
 const express = require('express');
 const router = express.Router();
 const tokenService = require('../services/tokenService');
-const { publicarNoInstagram, refreshMetaToken } = require('../services/metaPublish');
+const { publicarNoInstagram, publicarNoFacebook, refreshMetaToken } = require('../services/metaPublish');
 
 // GET /api/meta/contas-instagram?accountId=studiovisual
 // Lista as Páginas do Facebook administradas pela conta conectada e, para cada uma, a conta
@@ -52,6 +52,23 @@ router.post('/meta/publicar', async (req, res) => {
     res.json({ publicado: true, id: resultado.id });
   } catch (err) {
     console.error('Erro ao publicar no Instagram:', err);
+    res.status(500).json({ publicado: false, error: String(err.message || err) });
+  }
+});
+
+// POST /api/meta/publicar-facebook
+// body: { accountId, imageUrl, caption, nomePagina? }
+router.post('/meta/publicar-facebook', async (req, res) => {
+  const { accountId, imageUrl, caption, nomePagina } = req.body;
+  if (!accountId || !imageUrl) {
+    return res.status(400).json({ error: 'accountId e imageUrl são obrigatórios' });
+  }
+
+  try {
+    const resultado = await publicarNoFacebook(accountId, { imageUrl, caption: caption || '', nomePagina });
+    res.json({ publicado: true, id: resultado.id, paginaNome: resultado.paginaNome });
+  } catch (err) {
+    console.error('Erro ao publicar no Facebook:', err);
     res.status(500).json({ publicado: false, error: String(err.message || err) });
   }
 });
