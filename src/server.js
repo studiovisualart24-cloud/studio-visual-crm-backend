@@ -3,6 +3,8 @@ const express = require('express');
 const app = express();
 
 const oauthRoutes = require('./routes/oauth');
+const instagramOauthRoutes = require('./routes/instagramOauth');
+const instagramRoutes = require('./routes/instagram');
 const webhookRoutes = require('./routes/webhooks');
 const crmRoutes = require('./routes/crm');
 const calendarRoutes = require('./routes/calendar');
@@ -29,6 +31,10 @@ app.use((req, res, next) => {
 
 app.use('/webhooks', webhookRoutes);
 app.use(express.json());
+// instagramOauthRoutes precisa vir ANTES de oauthRoutes: as rotas /instagram/connect e
+// /instagram/callback são mais específicas que a rota genérica /:provider/connect do oauth.js,
+// e o Express usa a primeira que der match — por isso a ordem aqui importa.
+app.use('/oauth', instagramOauthRoutes);
 app.use('/oauth', oauthRoutes);
 app.use('/api', crmRoutes);
 app.use('/api', calendarRoutes);
@@ -38,6 +44,7 @@ app.use('/api', driveRoutes);
 app.use('/api', iaRoutes);
 app.use('/api', linkedinRoutes);
 app.use('/api', metaRoutes);
+app.use('/api', instagramRoutes);
 app.use('/api', automacoesRoutes);
 app.use('/api', leadsRoutes);
 
