@@ -37,6 +37,7 @@ app.use('/api', whatsappRoutes);
 app.use('/api', driveRoutes);
 app.use('/api', iaRoutes);
 app.use('/api', linkedinRoutes);
+app.use('/api', metaRoutes);
 app.use('/api', automacoesRoutes);
 app.use('/api', leadsRoutes);
 
