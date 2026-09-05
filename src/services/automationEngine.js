@@ -118,13 +118,19 @@ async function executarProximoPasso(runId) {
         log.push(linha(resultado.enviado ? `Email enviado para ${destino}.` : `Email não enviado: ${resultado.aviso || resultado.error}`));
         break;
       }
-      case 'enviar_whatsapp': {
+            case 'enviar_whatsapp': {
         const destino = contato?.whatsapp || contato?.telefone || step.para;
         if (!destino) {
           log.push(linha('WhatsApp pulado: nem o lead nem o passo têm um número definido.'));
           break;
         }
-        const resultado = await enviarWhatsapp({ para: destino, mensagem: preencherVariaveis(step.mensagem, contato) || '' });
+        // Se o passo tem um "modeloNome" preenchido, usa um modelo (template) aprovado pelo WhatsApp —
+        // obrigatório para iniciar conversa com um lead que nunca falou com a gente antes (mensagem
+        // "iniciada pela empresa"). Sem modelo, manda texto livre (só entrega se o lead já escreveu
+        // pra gente nas últimas 24h). O modelo hoje só suporta uma variável ({{1}} = nome do lead).
+        const resultado = step.modeloNome
+          ? await enviarWhatsapp({ para: destino, templateName: step.modeloNome, templateParams: [contato?.nome || ''] })
+          : await enviarWhatsapp({ para: destino, mensagem: preencherVariaveis(step.mensagem, contato) || '' });
         log.push(linha(resultado.enviado ? `WhatsApp enviado para ${destino}.` : `WhatsApp não enviado: ${resultado.aviso || resultado.error}`));
         break;
       }
