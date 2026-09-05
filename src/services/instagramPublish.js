@@ -20,6 +20,28 @@ async function refreshInstagramToken(currentToken) {
   return { access_token: data.access_token, refresh_token: data.access_token, expires_in: data.expires_in };
 }
 
+function esperar(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+// O Instagram processa a imagem em segundo plano depois de criar o "container" (baixa a foto da
+// URL, converte etc). Se a gente tentar publicar cedo demais, ele responde com o erro "Media ID
+// is not available" / "not ready for publishing". Por isso esperamos o status_code virar
+// "FINISHED" antes do passo 2 — geralmente leva só 1-3 segundos, raramente mais que isso.
+async function esperarMidiaFicarPronta(containerId, accessToken, tentativas = 10) {
+  for (let i = 0; i < tentativas; i++) {
+    const status = await fetch(
+      `https://graph.instagram.com/v21.0/${containerId}?fields=status_code&access_token=${accessToken}`
+    ).then((r) => r.json());
+
+    if (status.status_code === 'FINISHED') return;
+    if (status.status_code === 'ERROR') throw new Error('O Instagram não conseguiu processar a imagem: ' + JSON.stringify(status));
+
+    await esperar(1500); // espera um pouco e checa de novo
+  }
+  throw new Error('A imagem demorou demais pra ficar pronta no Instagram. Tenta publicar de novo em alguns segundos.');
+}
+
 async function publicarNoInstagramDireto(accountId, { imageUrl, caption }) {
   const row = await prisma.integrationToken.findUnique({
     where: { accountId_provider: { accountId, provider: 'instagram' } },
@@ -38,7 +60,10 @@ async function publicarNoInstagramDireto(accountId, { imageUrl, caption }) {
   ).then((r) => r.json());
   if (!container.id) throw new Error('Falha ao criar mídia: ' + JSON.stringify(container));
 
-  // Passo 2: publica o container de verdade no perfil.
+  // Passo 2: espera o Instagram terminar de processar a imagem.
+  await esperarMidiaFicarPronta(container.id, accessToken);
+
+  // Passo 3: publica o container de verdade no perfil.
   const publish = await fetch(
     `https://graph.instagram.com/v21.0/${igUserId}/media_publish?creation_id=${container.id}&access_token=${accessToken}`,
     { method: 'POST' }
