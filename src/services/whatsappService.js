@@ -11,6 +11,10 @@ async function enviarWhatsapp({ para, mensagem, templateName, templateParams }) 
 
   const numeroLimpo = String(para).replace(/\D/g, '');
 
+  // A Meta passou a exigir variáveis de modelo NOMEADAS (ex: {{nome}}) em vez das antigas
+  // numeradas (ex: {{1}}). Por isso templateParams agora é uma lista de {name, text}, ex:
+  // [{ name: 'nome', text: 'Mariana' }] — precisa bater com o nome da variável usada no modelo
+  // aprovado na Meta.
   const body = templateName
     ? {
         messaging_product: 'whatsapp',
@@ -20,7 +24,10 @@ async function enviarWhatsapp({ para, mensagem, templateName, templateParams }) 
           name: templateName,
           language: { code: 'pt_BR' },
           components: templateParams
-            ? [{ type: 'body', parameters: templateParams.map((p) => ({ type: 'text', text: p })) }]
+            ? [{
+                type: 'body',
+                parameters: templateParams.map((p) => ({ type: 'text', parameter_name: p.name, text: p.text })),
+              }]
             : [],
         },
       }
