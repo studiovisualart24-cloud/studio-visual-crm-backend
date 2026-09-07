@@ -5,7 +5,7 @@
 // As funções gerarTexto() e conversar() mantêm a mesma assinatura de antes — quem chama (rotas
 // e automação) não precisa saber qual provedor de IA está por trás.
 
-const GEMINI_MODEL = 'gemini-2.5-flash';
+const GEMINI_MODEL = 'gemini-3.6-flash';
 
 async function chamarGemini(mensagens, sistema, maxTokens) {
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${process.env.GEMINI_API_KEY}`;
