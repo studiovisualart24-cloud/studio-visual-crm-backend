@@ -1,43 +1,43 @@
-// Chama a API da Anthropic (Claude) usando uma chave de API paga (sem plano grátis, mas
-// custo por mensagem costuma ser baixo). Isso existe porque chamadas diretas do navegador
-// para IA só funcionam dentro do ambiente de artefatos do Claude.ai — fora dali (como no CRM
-// publicado no Netlify), é preciso passar pelo backend com uma API key de verdade.
+// Chama a API do Google Gemini (tem camada gratuita, sem custo pra esse tipo de uso — geração
+// de posts, legendas, e-mails curtos) em vez da API paga da Anthropic. Precisa de uma chave
+// grátis criada em aistudio.google.com/apikey, salva na variável de ambiente GEMINI_API_KEY.
+//
+// As funções gerarTexto() e conversar() mantêm a mesma assinatura de antes — quem chama (rotas
+// e automação) não precisa saber qual provedor de IA está por trás.
 
-const CLAUDE_MODEL = 'claude-sonnet-5';
+const GEMINI_MODEL = 'gemini-2.5-flash';
 
-async function chamarClaude(mensagens, sistema, maxTokens) {
-  const resp = await fetch('https://api.anthropic.com/v1/messages', {
+async function chamarGemini(mensagens, sistema, maxTokens) {
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${process.env.GEMINI_API_KEY}`;
+
+  const body = {
+    contents: mensagens.map((m) => ({
+      // O Gemini usa "model" em vez de "assistant" pro papel da IA na conversa.
+      role: m.role === 'assistant' ? 'model' : 'user',
+      parts: [{ text: m.content }],
+    })),
+    generationConfig: { maxOutputTokens: maxTokens || 800 },
+    ...(sistema && { systemInstruction: { parts: [{ text: sistema }] } }),
+  };
+
+  const resp = await fetch(url, {
     method: 'POST',
-    headers: {
-      'x-api-key': process.env.ANTHROPIC_API_KEY,
-      'anthropic-version': '2023-06-01',
-      'Content-Type': 'application/json',
-      // Só é necessário se a chave de API for do tipo "vinculada à identidade" (organizações
-      // com SSO/federação de identidade configurada). Chaves comuns ignoram este cabeçalho.
-      ...(process.env.ANTHROPIC_WORKSPACE_ID && { 'anthropic-workspace-id': process.env.ANTHROPIC_WORKSPACE_ID }),
-    },
-    body: JSON.stringify({
-      model: CLAUDE_MODEL,
-      max_tokens: maxTokens || 800,
-      ...(sistema && { system: sistema }),
-      messages: mensagens.map((m) => ({
-        role: m.role === 'assistant' ? 'assistant' : 'user',
-        content: m.content,
-      })),
-    }),
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
   });
   const data = await resp.json();
   if (!resp.ok) throw new Error(JSON.stringify(data));
 
-  return (data.content || []).map((bloco) => bloco.text || '').join('\n').trim();
+  const partes = data.candidates?.[0]?.content?.parts || [];
+  return partes.map((p) => p.text || '').join('\n').trim();
 }
 
 async function gerarTexto({ prompt, sistema, maxTokens }) {
-  if (!process.env.ANTHROPIC_API_KEY) {
-    return { ok: false, aviso: 'ANTHROPIC_API_KEY não configurada. Crie uma chave em console.anthropic.com/settings/keys e adicione nas variáveis de ambiente.' };
+  if (!process.env.GEMINI_API_KEY) {
+    return { ok: false, aviso: 'GEMINI_API_KEY não configurada. Crie uma chave grátis em aistudio.google.com/apikey e adicione nas variáveis de ambiente.' };
   }
   try {
-    const texto = await chamarClaude([{ role: 'user', content: prompt }], sistema, maxTokens);
+    const texto = await chamarGemini([{ role: 'user', content: prompt }], sistema, maxTokens);
     return { ok: true, texto };
   } catch (err) {
     console.error('Erro ao chamar a IA:', err);
@@ -46,11 +46,11 @@ async function gerarTexto({ prompt, sistema, maxTokens }) {
 }
 
 async function conversar({ mensagens, sistema, maxTokens }) {
-  if (!process.env.ANTHROPIC_API_KEY) {
-    return { ok: false, aviso: 'ANTHROPIC_API_KEY não configurada. Crie uma chave em console.anthropic.com/settings/keys e adicione nas variáveis de ambiente.' };
+  if (!process.env.GEMINI_API_KEY) {
+    return { ok: false, aviso: 'GEMINI_API_KEY não configurada. Crie uma chave grátis em aistudio.google.com/apikey e adicione nas variáveis de ambiente.' };
   }
   try {
-    const texto = await chamarClaude(mensagens, sistema, maxTokens);
+    const texto = await chamarGemini(mensagens, sistema, maxTokens);
     return { ok: true, texto };
   } catch (err) {
     console.error('Erro ao chamar a IA:', err);
