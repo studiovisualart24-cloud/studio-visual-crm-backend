@@ -23,10 +23,12 @@ async function enviarWhatsapp({ para, mensagem, templateName, templateParams }) 
         template: {
           name: templateName,
           language: { code: 'pt_BR' },
+          // A Meta recusa (#131008) qualquer parâmetro com texto vazio, então nunca deixamos
+          // "text" ir em branco — se vier vazio de algum lugar, usa um valor genérico.
           components: templateParams
             ? [{
                 type: 'body',
-                parameters: templateParams.map((p) => ({ type: 'text', parameter_name: p.name, text: p.text })),
+                parameters: templateParams.map((p) => ({ type: 'text', parameter_name: p.name, text: p.text || 'Cliente' })),
               }]
             : [],
         },
