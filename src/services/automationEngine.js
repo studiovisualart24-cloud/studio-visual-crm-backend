@@ -129,8 +129,11 @@ async function executarProximoPasso(runId) {
         // "iniciada pela empresa"). Sem modelo, manda texto livre (só entrega se o lead já escreveu
         // pra gente nas últimas 24h). O modelo hoje só suporta uma variável nomeada {{nome}} = nome do lead
         // (a Meta exige variáveis nomeadas em letra minúscula, não mais numeradas tipo {{1}}).
+        // A Meta rejeita um parâmetro de modelo vazio (erro 131008), o que acontece sempre que
+        // rodamos "Testar agora" sem lead associado, ou se um lead real estiver sem nome preenchido.
+        // Por isso nunca mandamos string vazia: usamos um nome genérico como fallback.
         const resultado = step.modeloNome
-          ? await enviarWhatsapp({ para: destino, templateName: step.modeloNome, templateParams: [{ name: 'nome', text: contato?.nome || '' }] })
+          ? await enviarWhatsapp({ para: destino, templateName: step.modeloNome, templateParams: [{ name: 'nome', text: contato?.nome || 'Cliente' }] })
           : await enviarWhatsapp({ para: destino, mensagem: preencherVariaveis(step.mensagem, contato) || '' });
         log.push(linha(resultado.enviado ? `WhatsApp enviado para ${destino}.` : `WhatsApp não enviado: ${resultado.aviso || resultado.error}`));
         break;
